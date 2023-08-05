@@ -56,11 +56,10 @@ class Buzzer:
         if(self.__volume == 0):
             return
         for i in range(len(notes)):
-            duration = 1 / durations[i]
             if (notes[i] == "P"):
                 self.buzzer.duty_cycle = 0
             else:
-                await self.play_note_async(notes[i], duration * 1.3)
+                await self.play_note_async(notes[i], durations[i])
         self.buzzer.duty_cycle = 0
 
     

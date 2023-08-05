@@ -19,7 +19,7 @@ player_one_x = 7
 
 score_notes = ["G4", "A4", "G4", "A5"]
 
-score_durations = [8, 16, 8, 8]
+score_durations = [.15, .1, .15, .15]
 
 class Center:
     y = round(game_height / 2 + game_start_y - paddle_height / 2)

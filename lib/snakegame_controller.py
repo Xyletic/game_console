@@ -110,7 +110,7 @@ class SnakeGame:
         return -1
 
     def eat_apple(self, player: Snake):
-        asyncio.create_task(self.hardware.speaker.play_song_async(["C5","G5"], [8,8]))
+        asyncio.create_task(self.hardware.speaker.play_song_async(["C5","G5"], [.1,.1]))
         player.apple_eaten()
         if(self.player_one_score % 5 == 0 and self.max_wait > 100):
             self.max_wait -= 20
