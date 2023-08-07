@@ -4,44 +4,63 @@ from xyletic_hardware.joystick import Joystick
 import system_data.system_colors as colors
 import snakegame_controller as game
 import random
+import displayio
 
 
 class Snake:
-    def __init__(self, screen: Screen, joystick: Joystick, controller: game.SnakeGame, player_num, group):
-        if(player_num == 1):
-            self.x = game.grid_start_x + game.grid_size * 2
-            self.y = game.grid_start_y + int(game.grid_height / 2)
-        else:
-            self.x = game.grid_start_x + (game.grid_cell_width - 2) * game.grid_size
-            self.y = game.grid_start_y + int(game.grid_height / 2)
+    def __init__(self, screen: Screen, controller: game.SnakeGame, group):
+        self.x = game.grid_start_x + game.grid_size * 2
+        self.y = game.grid_start_y + int(game.grid_height / 2)
         self.direction = 0
         self.tails = []
         self.max_length = 100
-        if(player_num == 1):
-            self.primary_color = colors.GREEN
-            self.secondary_color = colors.DARK_GREEN
-        else:
-            self.primary_color = colors.RED
-            self.secondary_color = colors.DARK_RED
-        self.snake_head = screen.draw_circle(self.x, self.y, math.floor(game.grid_size / 2), fill=self.primary_color, outline=colors.WHITE, group=group)
-        #self.snake_head = screen.draw_rect(self.x, self.y, game.snake_size, game.snake_size, fill=colors.GREEN)
+        self.group = group
+        self.sprite = displayio.TileGrid(controller.snake_head_bitmaps[1], pixel_shader=controller.snake_head_palettes[1], x=self.x, y=self.y)
+        self.sprite.flip_x = True
+        self.group.append(self.sprite)
         self.screen = screen
         self.controller = controller
+        self.last_direction = 0
 
     def move_snake(self):
         if(len(self.tails) > 0):
             lastTail = self.tails[-1]
+            frontTail = self.tails[0]
             self.tails.remove(lastTail)
-            lastTail.move_position(self.x, self.y)
+            if(frontTail != lastTail):
+                lastTail.move_position(self.x, self.y, frontTail.dir)
+            else:
+                lastTail.move_position(self.x, self.y)
             self.tails.insert(0, lastTail)
+            self.tails[-1].update_to_end_sprite()
         if(self.direction == 0):
             self.x += game.grid_size
+            if(self.direction != self.last_direction):
+                self.group.remove(self.sprite)
+                self.sprite = displayio.TileGrid(self.controller.snake_head_bitmaps[1], pixel_shader=self.controller.snake_head_palettes[1], x=self.x, y=self.y)
+                self.sprite.flip_x = True
+                self.group.append(self.sprite)
         if(self.direction == 90):
             self.y += game.grid_size
+            if(self.direction != self.last_direction):
+                self.group.remove(self.sprite)
+                self.sprite = displayio.TileGrid(self.controller.snake_head_bitmaps[0], pixel_shader=self.controller.snake_head_palettes[0], x=self.x, y=self.y)
+                self.sprite.flip_y = True
+                self.group.append(self.sprite)
         if(self.direction == 180):
             self.x -= game.grid_size
+            if(self.direction != self.last_direction):
+                self.group.remove(self.sprite)
+                self.sprite = displayio.TileGrid(self.controller.snake_head_bitmaps[1], pixel_shader=self.controller.snake_head_palettes[1], x=self.x, y=self.y)
+                self.group.append(self.sprite)
         if(self.direction == 270):
             self.y -= game.grid_size
+            if(self.direction != self.last_direction):
+                self.group.remove(self.sprite)
+                self.sprite = displayio.TileGrid(self.controller.snake_head_bitmaps[0], pixel_shader=self.controller.snake_head_palettes[0], x=self.x, y=self.y)
+                self.group.append(self.sprite)
+
+        
         if(self.x >= game.grid_start_x + game.grid_width):
             self.x = game.grid_start_x
         if (self.y >= game.grid_start_y + game.grid_height):
@@ -50,15 +69,16 @@ class Snake:
             self.x = (game.grid_start_x + game.grid_width) - game.grid_size
         if(self.y < game.grid_start_y):
             self.y = (game.grid_start_y + game.grid_height) - game.grid_size
-        self.snake_head.x = self.x
-        self.snake_head.y = self.y
+        self.sprite.x = self.x
+        self.sprite.y = self.y
+        self.last_direction = self.direction
         
     def apple_eaten(self):
         if(len(self.tails) < self.max_length):
             if(len(self.tails) > 0):
-                self.tails.append(SnakeTail(self.tails[-1].x + math.floor(game.grid_size /2), self.tails[-1].y + math.floor(game.grid_size /2), self.screen, self.secondary_color, self.primary_color))
+                self.tails.append(SnakeTail(self.tails[-1].sprite.x, self.tails[-1].sprite.y, self.tails[-1].dir, self.controller, self.group))
             else:
-                self.tails.append(SnakeTail(self.x + math.floor(game.grid_size /2), self.y + math.floor(game.grid_size /2), self.screen, self.secondary_color, self.primary_color))
+                self.tails.append(SnakeTail(self.x, self.y, self.direction, self.controller, self.group))
 
     def player_direction(self, dir):
         if(dir == 180 and self.direction is not 0):
@@ -113,13 +133,59 @@ class Snake:
 
 
 class SnakeTail:
-    def __init__(self, x, y, screen: Screen, fill_color, outline_color):
-        self.x = x
-        self.y = y
-        self.tail_segment = screen.draw_circle(self.x, self.y, math.floor(game.grid_size /2), fill=fill_color, outline=outline_color)
+    def __init__(self, x, y, dir, controller: game.SnakeGame, group):
+        self.group = group
+        self.controller = controller
+        self.dir = dir
+        if(dir == 180 or dir == 0):
+            self.sprite = displayio.TileGrid(self.controller.snake_body_bitmaps[4], pixel_shader=self.controller.snake_body_palettes[4], x=x, y=y)
+            if(dir == 0):
+                self.sprite.flip_x = True
+        else:
+            self.sprite = displayio.TileGrid(self.controller.snake_body_bitmaps[3], pixel_shader=self.controller.snake_body_palettes[3], x=x, y=y)
+            if(dir == 90):
+                self.sprite.flip_y = True
+        self.group.append(self.sprite)
+        #self.tail_segment = screen.draw_circle(self.x, self.y, math.floor(game.grid_size /2), fill=fill_color, outline=outline_color)
 
-    def move_position(self, x, y):
-        self.x = x
-        self.y = y
-        self.tail_segment.x = x
-        self.tail_segment.y = y
+    def move_position(self, x, y, behind_dir=None):
+        self.dir = self.controller.player_one.direction
+        if(behind_dir == None):
+            self.sprite.x = x
+            self.sprite.y = y
+            return
+        self.group.remove(self.sprite)
+        if(behind_dir == self.controller.player_one.direction):
+            # Straight
+            if(self.dir == 180 or self.dir == 0):
+                self.sprite = displayio.TileGrid(self.controller.snake_body_bitmaps[1], pixel_shader=self.controller.snake_body_palettes[1], x=x, y=y)
+            else:
+                self.sprite = displayio.TileGrid(self.controller.snake_body_bitmaps[0], pixel_shader=self.controller.snake_body_palettes[0], x=x, y=y)
+        else:
+            # Corner
+            self.sprite = displayio.TileGrid(self.controller.snake_body_bitmaps[2], pixel_shader=self.controller.snake_body_palettes[2], x=x, y=y)
+            if(self.dir == 0 and behind_dir == 90):
+                self.sprite.flip_y = True
+            elif(self.dir == 90 and behind_dir == 0):
+                self.sprite.flip_x = True
+            elif(self.dir == 180):
+                self.sprite.flip_x = True
+                if(behind_dir == 90):
+                    self.sprite.flip_y = True
+            elif(self.dir == 270):
+                self.sprite.flip_y = True
+                if(behind_dir == 0):
+                    self.sprite.flip_x = True
+        self.group.append(self.sprite)
+    
+    def update_to_end_sprite(self):
+        self.group.remove(self.sprite)
+        if(self.dir == 180 or self.dir == 0):
+            self.sprite = displayio.TileGrid(self.controller.snake_body_bitmaps[4], pixel_shader=self.controller.snake_body_palettes[4], x=self.sprite.x, y=self.sprite.y)
+            if(self.dir == 0):
+                self.sprite.flip_x = True
+        else:
+            self.sprite = displayio.TileGrid(self.controller.snake_body_bitmaps[3], pixel_shader=self.controller.snake_body_palettes[3], x=self.sprite.x, y=self.sprite.y)
+            if(self.dir == 90):
+                self.sprite.flip_y = True
+        self.group.append(self.sprite)

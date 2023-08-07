@@ -15,6 +15,7 @@
         "./lib",
         "./lib",
         "./lib",
+        "./lib",
         "./lib"
     ],
     "circuitpython.board.version": "8.2.0",

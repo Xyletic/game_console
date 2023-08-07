@@ -1,41 +1,37 @@
-import os
-import microcontroller
 from hardware_controller import Hardware
 from system_data.sub_menu import SubMenuItem, SliderMenu
-import snakegame_controller
-import spaceshooter_controller
-import ponggame_controller
-import system_data.main_menu as menu
 
 class System:
     def __init__(self, hardware: Hardware, battery) -> None:
         self.hardware = hardware
         self.battery = battery
         self.state = "mainmenu"
-        stat = os.statvfs("/")
+        module = __import__("os")
+        stat = module.statvfs("/")
         free = stat[0] * stat[3]
         free_kb = free / 1024  # Convert bytes to kilobytes
         print()
         print("System stats:")
         print("Available flash memory:", round(free_kb, 2), "KB")
-        print(f"CPU 0 temp: {round(microcontroller.cpus[0].temperature,1)} °C")
-        print(f"CPU 1 temp: {round(microcontroller.cpus[1].temperature,1)} °C")
-        print("CPU 0 freq:", microcontroller.cpus[0].frequency / 1000000, "MHz")
-        print("CPU 1 freq:", microcontroller.cpus[1].frequency / 1000000, "MHz")
-        reset_reason = microcontroller.cpu.reset_reason
-        if reset_reason == microcontroller.ResetReason.POWER_ON:
+        module = __import__("microcontroller")
+        print(f"CPU 0 temp: {round(module.cpus[0].temperature,1)} °C")
+        print(f"CPU 1 temp: {round(module.cpus[1].temperature,1)} °C")
+        print("CPU 0 freq:", module.cpus[0].frequency / 1000000, "MHz")
+        print("CPU 1 freq:", module.cpus[1].frequency / 1000000, "MHz")
+        reset_reason = module.cpu.reset_reason
+        if reset_reason == module.ResetReason.POWER_ON:
             print("Reset Reason: Power On.")
-        elif reset_reason == microcontroller.ResetReason.BROWNOUT:
+        elif reset_reason == module.ResetReason.BROWNOUT:
             print("Reset Reason: Brownout.")
-        elif reset_reason == microcontroller.ResetReason.WATCHDOG:
+        elif reset_reason == module.ResetReason.WATCHDOG:
             print("Reset Reason: Watchdog.")
-        elif reset_reason == microcontroller.ResetReason.SOFTWARE:
+        elif reset_reason == module.ResetReason.SOFTWARE:
             print("Reset Reason: Software.")
-        elif reset_reason == microcontroller.ResetReason.RESET_PIN:
+        elif reset_reason == module.ResetReason.RESET_PIN:
             print("Reset Reason: Reset Pin.")
-        elif reset_reason == microcontroller.ResetReason.RESCUE_DEBUG:
+        elif reset_reason == module.ResetReason.RESCUE_DEBUG:
             print("Reset Reason: Rescue Debug.")
-        elif reset_reason == microcontroller.ResetReason.UNKNOWN:
+        elif reset_reason == module.ResetReason.UNKNOWN:
             print("Reset Reason: Unknown.")
         else:
             print("Reset Reason: Undefined.")
@@ -52,13 +48,16 @@ class System:
                 if(decision == -1):
                     pass
                 elif(decision == 0):
-                    self.process = ponggame_controller.PongGame(self.hardware)
+                    module = __import__("ponggame_controller")
+                    self.process = module.PongGame(self.hardware)
                     self.state = "playing"
                 elif(decision == 1):
-                    self.process = snakegame_controller.SnakeGame(self.hardware)
+                    module = __import__("snakegame_controller")
+                    self.process = module.SnakeGame(self.hardware)
                     self.state = "playing"
                 elif(decision == 2):
-                    self.process = spaceshooter_controller.SpaceGame(self.hardware)
+                    module = __import__("spaceshooter_controller")
+                    self.process = module.SpaceGame(self.hardware)
                     #asyncio.create_task(process.play_song())
                     self.state = "playing"
                 elif(decision == 3):
@@ -119,16 +118,19 @@ class System:
             #await asyncio.sleep(.01)
 
 
-    def get_main_menu(self) -> menu.MainMenu:
-        return menu.MainMenu("Main Menu", self.hardware, [SubMenuItem("Pong"), SubMenuItem("Snake"), SubMenuItem("Space Shooter"), SubMenuItem("Settings")])
+    def get_main_menu(self):
+        module = __import__("system_data.main_menu")
+        return module.main_menu.MainMenu("Main Menu", self.hardware, [SubMenuItem("Pong"), SubMenuItem("Snake"), SubMenuItem("Space Shooter"), SubMenuItem("Settings")])
     
 
-    def get_settings_menu(self) -> menu.MainMenu:
-        return menu.MainMenu("Settings", self.hardware, [SubMenuItem("Screen Brightness"), SubMenuItem("Volume"), SubMenuItem("Button Brightness"), SubMenuItem("Back")])
+    def get_settings_menu(self):
+        module = __import__("system_data.main_menu")
+        return module.main_menu.MainMenu("Settings", self.hardware, [SubMenuItem("Screen Brightness"), SubMenuItem("Volume"), SubMenuItem("Button Brightness"), SubMenuItem("Back")])
     
 
-    def get_pause_menu(self) -> menu.MainMenu:
-        return menu.MainMenu("PAUSED", self.hardware, [SubMenuItem("Screen Brightness"), SubMenuItem("Volume"), SubMenuItem("Button Brightness"), SubMenuItem("Restart"), SubMenuItem("Back")])
+    def get_pause_menu(self):
+        module = __import__("system_data.main_menu")
+        return module.main_menu.MainMenu("PAUSED", self.hardware, [SubMenuItem("Screen Brightness"), SubMenuItem("Volume"), SubMenuItem("Button Brightness"), SubMenuItem("Restart"), SubMenuItem("Back")])
     
 
     def get_screen_adjust_menu(self, title, subtitle, initial_value, func) -> SliderMenu:

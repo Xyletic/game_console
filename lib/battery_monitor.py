@@ -3,6 +3,7 @@ import board
 from xyletic_hardware.screen import Screen
 import system_data.system_colors as colors
 import asyncio
+import gc
 
 
 class Battery:
@@ -25,6 +26,8 @@ class Battery:
 
     async def add_adc_reading(self):
         while True:
+            gc.collect()
+            print("Free memory:", gc.mem_free())
             self.__historical_values.append(round(self.adcpin.value * (3.3 / 65535) * 2.965, 3))
             while(len(self.__historical_values) > 20):
                 self.__historical_values.pop(0)

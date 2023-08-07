@@ -3,27 +3,25 @@ import displayio
 import asyncio
 import spaceshooter_controller as game
 import random
+import gc
 
 class BasicEnemy:
-    def __init__(self, group : displayio.Group) -> None:
-        self.health = 2
+    def __init__(self, group : displayio.Group, bitmap, primary_palette, hit_palette) -> None:
+        #gc.collect()
+        #start_mem = gc.mem_free()
+        #print("Memory free:", start_mem)
+        self.bitmap = bitmap
+        self.palette = primary_palette
+        self.hit_palette = hit_palette
+        self.health = 3
         self.group = group
         self.x = game.game_start_x + game.game_width + 5
-        # Load the image
-        self.bitmap, self.primary_palette = adafruit_imageload.load("/assets/spaceshooter/enemy_ship.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        self.white_palette = displayio.Palette(len(self.primary_palette))
-        for i, color in enumerate(self.primary_palette):
-            if(color != 0):
-                self.white_palette[i] = 0xFFFFFF
-        # Modify palette to make black pixels transparent
-        self.primary_palette.make_transparent(0)
-        self.white_palette.make_transparent(0)
-        # Create a tilegrid using the bitmap and palette
         y = random.randrange(game.game_start_y + 5, game.game_start_y + game.game_height - 21)
-        self.sprite = displayio.TileGrid(self.bitmap, pixel_shader=self.primary_palette, x=self.x, y=y)
+        self.sprite = displayio.TileGrid(bitmap, pixel_shader=self.palette, x=self.x, y=y)
         group.append(self.sprite)
         self.ydir = 90
         self.xspeed = .2
+        #print("BasicEnemy memory used:", start_mem - gc.mem_free())
     
     def move(self):
         self.x -= self.xspeed
@@ -41,19 +39,16 @@ class BasicEnemy:
     def get_height(self):
         return self.sprite.tile_height * self.sprite.height
     
-    async def hit(self):
-        self.health -= game.laser_damage
+    async def hit(self, damage):
+        self.health -= damage
         if(self.health > 0):
             self.group.remove(self.sprite)
-            self.sprite = displayio.TileGrid(self.bitmap, pixel_shader=self.white_palette,x=self.sprite.x, y=self.sprite.y)
+            self.sprite = displayio.TileGrid(self.bitmap, pixel_shader=self.hit_palette,x=self.sprite.x, y=self.sprite.y)
             self.group.append(self.sprite)
             await asyncio.sleep(.04)
             self.group.remove(self.sprite)
-            self.sprite = displayio.TileGrid(self.bitmap, pixel_shader=self.primary_palette,x=self.sprite.x, y=self.sprite.y)
+            self.sprite = displayio.TileGrid(self.bitmap, pixel_shader=self.palette,x=self.sprite.x, y=self.sprite.y)
             self.group.append(self.sprite)
-        else:
-            pass
-            #self.remove()
     
     def remove(self):
         self.group.remove(self.sprite)

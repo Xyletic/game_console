@@ -4,10 +4,10 @@ from spaceshooter_data.player_laser import PlayerLaser
 from spaceshooter_data.star import Star
 from hardware_controller import Hardware
 import system_data.system_colors as colors
-
+import adafruit_imageload
+import displayio
 import time
 import asyncio
-import gc
 
 game_start_x = 0
 game_start_y = 18
@@ -18,9 +18,6 @@ enemy_speed = 2
 laser_speed = 9
 laser_damage = 1
 
-notes = ['G4', 'A4', 'B4', 'D5', 'D5', 'B4', 'A4', 'G4', 'E4', 'G4', 'A4', 'B4', 'A4', 'B4', 'D5']
-durations = [2, 4, 8, 2, 4, 4, 4, 8, 4, 4, 4, 8, 4, 4, 8] # note durations, now in quarter and eighth notes
-
 laser_notes = ["G7", "A5"]
 laser_notes_durations = [.05, .05]
 
@@ -28,19 +25,25 @@ laser_notes_durations = [.05, .05]
 class SpaceGame:
     def __init__(self, hardware: Hardware) -> None:
         self.hardware = hardware
+        self.bitmap, self.primary_palette = adafruit_imageload.load("/assets/spaceshooter/enemy_ship.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        self.hit_palette = displayio.Palette(len(self.primary_palette))
+        for i, color in enumerate(self.primary_palette):
+            if(color != 0):
+                self.hit_palette[i] = 0xFFFFFF
+        self.primary_palette.make_transparent(0)
+        self.hit_palette.make_transparent(0)
         self.playing = False
         self.group = None
         self.stars = []
         self.player_lasers = []
         self.enemies = []
-        self.laser_delay = .5
+        self.laser_delay = .25
         self.last_laser = time.monotonic()
         self.last_enemy_spawn = time.monotonic()
-        self.enemy_delay = 10
+        self.enemy_delay = 1
         self.restart()
 
-    async def play_song(self):
-        await self.hardware.speaker.play_song_async(notes, durations)
+
 
     def setup_screen(self):
         self.hardware.display.reset()
@@ -59,12 +62,14 @@ class SpaceGame:
                 e.remove()
                 self.enemies.remove(e)
         if(time.monotonic() - self.last_enemy_spawn >= self.enemy_delay):
-            self.enemies.append(BasicEnemy(self.group))
+            self.enemies.append(BasicEnemy(self.group, self.bitmap, self.primary_palette, self.hit_palette))
             self.last_enemy_spawn = time.monotonic()
         for l in self.player_lasers:
+            l.move()
             if(l.sprite.x > game_start_x + game_width):
                 l.remove()
                 self.player_lasers.remove(l)
+                del l
                 continue
             for e in self.enemies:
                 if(l.is_colliding(e.sprite.x, e.sprite.y, 
@@ -72,10 +77,10 @@ class SpaceGame:
                         e.sprite.y + e.get_height())):
                     l.remove()
                     self.player_lasers.remove(l)
+                    del l
                     asyncio.create_task(self.hardware.speaker.play_note_async("F4", .03))
-                    asyncio.create_task(e.hit())
-                    continue
-            l.move()
+                    asyncio.create_task(e.hit(laser_damage))
+                    break
         if(self.playing):
             x = self.hardware.joystick.get_last_x_direction()
             y = self.hardware.joystick.get_last_y_direction()
@@ -92,7 +97,7 @@ class SpaceGame:
             asyncio.create_task(self.hardware.speaker.play_song_async(laser_notes, laser_notes_durations))
         for star in self.stars:
             star.move()
-        gc.collect()
+        #gc.collect()
         await asyncio.sleep(.03)
         return -1
 
@@ -104,5 +109,5 @@ class SpaceGame:
             self.hardware.joystick.debounce_time = .02
         else:
             self.hardware.joystick.debounce_time = .5
-        self.enemies = [BasicEnemy(self.group)]
+        self.enemies = [BasicEnemy(self.group, self.bitmap, self.primary_palette, self.hit_palette)]
         self.player = PlayerShip(self.group)

@@ -2,18 +2,22 @@ from hardware_controller import Hardware
 from snakegame_data.snakegame_snake import Snake
 from snakegame_data.snakegame_apple import Apple
 import system_data.system_colors as colors
+import adafruit_imageload
+import displayio
 import time
 import asyncio
-import gc
+import math
+import random
+import screenshot_controller
 
-grid_size = 5
+grid_size = 6
 grid_start_x = 0
 grid_start_y = 18
-grid_width = 160
-grid_height = 110
+grid_width = math.floor(160 / grid_size) * grid_size
+grid_height = math.floor(110 / grid_size) * grid_size
 grid_cell_width = int(grid_width / grid_size)
 grid_cell_height = int(grid_height / grid_size)
-snake_size = 5
+snake_size = 6
 
 
 class SnakeGame:
@@ -34,30 +38,76 @@ class SnakeGame:
         self.highscore = 0
         self.chime_state = "high"
         self.group = None
+        self.image_load()
         self.restart()
+
+
+    def image_load(self):
+        #Snake Head
+        snake_head_bitmap_up, snake_head_palette_up = adafruit_imageload.load("/assets/snake/snake_head_up.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        snake_head_bitmap_left, snake_head_palette_left = adafruit_imageload.load("/assets/snake/snake_head_left.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        self.snake_head_bitmaps = [snake_head_bitmap_up, snake_head_bitmap_left]
+        self.snake_head_palettes = [snake_head_palette_up, snake_head_palette_left]
+
+        #Snake Body
+        snake_body_straight_bitmap_up, snake_body_straight_palette_up = adafruit_imageload.load("/assets/snake/snake_body_straight_up.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        snake_body_straight_bitmap_left, snake_body_straight_palette_left = adafruit_imageload.load("/assets/snake/snake_body_straight_left.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        snake_body_corner_bitmap, snake_body_corner_palette = adafruit_imageload.load("/assets/snake/snake_body_corner.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        snake_body_end_bitmap_up, snake_body_end_palette_up = adafruit_imageload.load("/assets/snake/snake_body_tail_up.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        snake_body_end_bitmap_left, snake_body_end_palette_left = adafruit_imageload.load("/assets/snake/snake_body_tail_left.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        self.snake_body_bitmaps = [snake_body_straight_bitmap_up, snake_body_straight_bitmap_left, snake_body_corner_bitmap, snake_body_end_bitmap_up, snake_body_end_bitmap_left]
+        self.snake_body_palettes = [snake_body_straight_palette_up, snake_body_straight_palette_left, snake_body_corner_palette, snake_body_end_palette_up, snake_body_end_palette_left]
+
+        #Apple
+        self.apple_bitmap, self.apple_palette = adafruit_imageload.load("/assets/snake/apple.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+
+        #Foliage
+        foliage_1_bitmap, foliage_1_palette = adafruit_imageload.load("/assets/snake/foliage_1.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        foliage_2_bitmap, foliage_2_palette = adafruit_imageload.load("/assets/snake/foliage_2.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        foliage_3_bitmap, foliage_3_palette = adafruit_imageload.load("/assets/snake/foliage_3.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        foliage_4_bitmap, foliage_4_palette = adafruit_imageload.load("/assets/snake/foliage_4.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        foliage_5_bitmap, foliage_5_palette = adafruit_imageload.load("/assets/snake/foliage_5.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        foliage_6_bitmap, foliage_6_palette = adafruit_imageload.load("/assets/snake/foliage_6.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        foliage_1_palette.make_transparent(0)
+        foliage_2_palette.make_transparent(0)
+        foliage_3_palette.make_transparent(0)
+        foliage_4_palette.make_transparent(0)
+        foliage_5_palette.make_transparent(0)
+        foliage_6_palette.make_transparent(0)
+        self.foliage_bitmaps = [foliage_1_bitmap, foliage_2_bitmap, foliage_3_bitmap, foliage_4_bitmap, foliage_5_bitmap, foliage_6_bitmap]
+        self.foliage_palettes = [foliage_1_palette, foliage_2_palette, foliage_3_palette, foliage_4_palette, foliage_5_palette, foliage_6_palette]
+
         
     
     def setup_screen(self):
         self.group = self.hardware.display.create_group()
         # Graphic Setup
-        self.hardware.display.draw_rect(0, 0, 160, 128, fill=colors.BLACK, group=self.group) # Background
-        self.hardware.display.draw_rect(grid_start_x, grid_start_y, grid_width, grid_height, fill=0x3b2f2f, group=self.group) # Game Area
-        self.hardware.display.draw_line(grid_start_x, grid_start_y - 1, grid_width, grid_start_y - 1, colors.WHITE, group=self.group) # Divider Line
-        self.hardware.display.draw_text(5, 10, "P1:", 1, colors.GREEN, group=self.group) # Player 1 Score Label
-        self.p1_score_display = self.hardware.display.draw_text(25, 10, str(self.player_one_score), 1, colors.WHITE, group=self.group) # Player 1 Score Value
+        self.hardware.display.draw_rect(0, 0, 160, 128, fill=0x1c2638, group=self.group) # Background
+        self.hardware.display.draw_line(grid_start_x, grid_start_y - 1, grid_width, grid_start_y - 1, 0xdaf2e9, group=self.group) # Divider Line
+        self.hardware.display.draw_text(5, 10, "P1:", 1, 0x95e0cc, group=self.group) # Player 1 Score Label
+        self.p1_score_display = self.hardware.display.draw_text(25, 10, str(self.player_one_score), 1, 0xdaf2e9, group=self.group) # Player 1 Score Value
         if(self.player_count > 1):
             self.hardware.display.draw_text(50, 10, "P2:", 1, colors.RED, group=self.group) # Player 2 Score Label
             self.p2_score_display = self.hardware.display.draw_text(70, 10, str(self.player_two_score), 1, colors.WHITE, group=self.group) # Player 2 Score Value
         else:
-            self.hardware.display.draw_text(50, 10, "HS:", 1, colors.WHITE, group=self.group) # Highscore Label
-            self.hardware.display.draw_text(70, 10, str(self.highscore), 1, colors.WHITE, group=self.group) # Highscore Value
-        if(not self.playing):
-            self.hardware.display.draw_text(5, 115, "Press", 1, colors.WHITE, group=self.group) # Score Label
-            self.hardware.display.draw_text(41, 115, "blue", 1, colors.LIGHT_BLUE, group=self.group) # Score Label
-            self.hardware.display.draw_text(70, 115, "to play!", 1, colors.WHITE, group=self.group) # Score Label
+            self.hardware.display.draw_text(50, 10, "HS:", 1, 0x95e0cc, group=self.group) # Highscore Label
+            self.hardware.display.draw_text(70, 10, str(self.highscore), 1, 0xdaf2e9, group=self.group) # Highscore Value 
+        for _ in range(20):
+            #add foliage
+            c = random.randint(0, len(self.foliage_bitmaps) - 1)
+            self.group.append(displayio.TileGrid(self.foliage_bitmaps[c], pixel_shader=self.foliage_palettes[c], x=random.randint(grid_start_x, grid_start_x + grid_width - 6), y=random.randint(grid_start_y, grid_start_y + grid_height - 6)))
+            
+        # if(not self.playing):
+        #     self.hardware.display.draw_text(5, 115, "Press", 1, colors.WHITE, group=self.group) # Score Label
+        #     self.hardware.display.draw_text(41, 115, "blue", 1, colors.LIGHT_BLUE, group=self.group) # Score Label
+        #     self.hardware.display.draw_text(70, 115, "to play!", 1, colors.WHITE, group=self.group) # Score Label
 
 
     async def process(self):
+        # if(self.hardware.white_button.is_pressed()):
+        #     while(self.hardware.white_button.is_pressed()):
+        #         await asyncio.sleep(.1)
+        #     screenshot_controller.capture_screenshot(self.group)
         if(self.hardware.menu_button.was_pressed()):
             return 0
         await asyncio.sleep(self.max_wait / 1000)
@@ -129,9 +179,6 @@ class SnakeGame:
         if(self.player_count > 1):
             del self.player_two
         del self.apple
-        print('Free memory before clean:', gc.mem_free())
-        gc.collect()
-        print('Free memory after clean:', gc.mem_free())
         self.hardware.display.reset()
         self.setup_screen()
         if(self.playing):
@@ -140,26 +187,17 @@ class SnakeGame:
         else:
            self.hardware.blue_button.pulse()
            self.hardware.joystick.debounce_time = .5
-        self.player_one = Snake(self.hardware.display, self.hardware.joystick, self, 1, self.group)
-        if(self.player_count > 1):
-            self.player_two = Snake(self.hardware.display, self.hardware.joystick, self, 2, self.group)
-        self.apple = Apple(self.hardware.display, self, self.group)
+        self.player_one = Snake(self.hardware.display, self, self.group)
+        self.apple = Apple(self, self.group)
 
 
     def place_free(self, obj, x_diff=0, y_diff=0):
         if(obj is not self.player_one):
             if(self.player_one.x == obj.x + x_diff and self.player_one.y == obj.y + y_diff):
                 return False
-        if(self.player_count > 1 and obj is not self.player_two):
-            if(self.player_two.x == obj.x + x_diff and self.player_two.y == obj.y + y_diff):
-                return False
         for tail in self.player_one.tails:
-            if(obj.x + x_diff == tail.x and obj.y + y_diff == tail.y):
+            if(obj.x + x_diff == tail.sprite.x and obj.y + y_diff == tail.sprite.y):
                 return False
-        if(self.player_count > 1):
-            for tail in self.player_two.tails:
-                if(obj.x + x_diff == tail.x and obj.y + y_diff == tail.y):
-                    return False
         return True
 
 

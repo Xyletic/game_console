@@ -2,12 +2,14 @@ import pwmio
 import board
 import busio
 import displayio
+import digitalio
+import storage
+import sdcardio
 import terminalio
 import microcontroller
 from adafruit_display_shapes import circle, rect, polygon, line
-from adafruit_display_text import label
+from adafruit_display_text.label import Label
 from adafruit_st7735r import ST7735R
-import system_data.system_colors as colors
 
 class Screen:
     def __init__(self) -> None:
@@ -16,7 +18,15 @@ class Screen:
         self.__brightness = pwmio.PWMOut(board.GP15, frequency=5000, duty_cycle=0)
         tft_cs = board.GP17
         tft_dc = board.GP22
+        card_cs = board.GP21
         reset = board.GP20
+
+        # SD Card
+        # sdcard = sdcardio.SDCard(spi, card_cs)
+        # vfs = storage.VfsFat(sdcard)
+        # storage.mount(vfs, "/sd")
+
+        # Display
         try:
             self.set_brightness(int.from_bytes(microcontroller.nvm[0:1], 'big'), False)
         except:
@@ -29,7 +39,7 @@ class Screen:
         self.__main_group = displayio.Group()
         self.display.show(self.__main_group)
         self.showing_battery = False
-        pass
+        
 
     def set_brightness(self, level, save=True):
         self.__brightness.duty_cycle = int(level * 65535 / 100)
@@ -53,7 +63,7 @@ class Screen:
         return render
 
     def draw_text(self, text_x, text_y, text_str, scale_size, text_color, group=None):
-        render = label.Label(terminalio.FONT, text=text_str, color=text_color)
+        render = Label(terminalio.FONT, text=text_str, color=text_color)
         if(group is None):
             text_group = displayio.Group(scale=scale_size, x=text_x, y=text_y)
             text_group.append(render)
