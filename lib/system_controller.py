@@ -96,6 +96,7 @@ class System:
                     self.hardware.all_LEDs_off()
             elif(self.state == "pausemenu"):
                 #temp - pause menu not implemented, so send back to main menu.
+                del self.process
                 self.process = self.get_main_menu()
                 self.state = "mainmenu"
             else:

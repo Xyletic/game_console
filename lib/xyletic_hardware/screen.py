@@ -22,9 +22,9 @@ class Screen:
         reset = board.GP20
 
         # SD Card
-        # sdcard = sdcardio.SDCard(spi, card_cs)
-        # vfs = storage.VfsFat(sdcard)
-        # storage.mount(vfs, "/sd")
+        sdcard = sdcardio.SDCard(spi, card_cs)
+        vfs = storage.VfsFat(sdcard)
+        storage.mount(vfs, "/sd")
 
         # Display
         try:

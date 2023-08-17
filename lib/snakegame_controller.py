@@ -175,6 +175,10 @@ class SnakeGame:
         if(self.group != None):
             self.hardware.display.remove_element(self.group)
         del self.group
+        if(self.player_one != None):
+            for t in self.player_one.tails:
+                del t
+            self.player_one.tails = []
         del self.player_one
         if(self.player_count > 1):
             del self.player_two
