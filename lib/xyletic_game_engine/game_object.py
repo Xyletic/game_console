@@ -3,6 +3,8 @@ from xyletic_game_engine.collision_rectangle import CollisionRectangle
 
 class GameObject:
     def __init__(self, x, y, width, height, sprite):
+        self.start_x = x
+        self.start_y = y
         self.sprite = sprite
         self.collision_box = CollisionRectangle(x, y, width, height)
         # Other common properties
@@ -24,3 +26,9 @@ class GameObject:
         #self.sprite.x = round(self.collision_box.x)
         #self.sprite.y = round(self.collision_box.y)
         pass
+
+    def reset(self):
+        self.collision_box.x = self.start_x
+        self.collision_box.y = self.start_y
+        self.sprite.x = round(self.start_x)
+        self.sprite.y = round(self.start_y)

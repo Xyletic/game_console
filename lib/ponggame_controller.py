@@ -6,6 +6,9 @@ from ponggame_data.ball import Ball
 import system_data.system_colors as colors
 import time
 import asyncio
+from random import uniform
+import adafruit_imageload
+import displayio
 from xyletic_game_engine.dynamic_object import DynamicObject
 
 from xyletic_game_engine.game_engine import GameEngine
@@ -19,7 +22,7 @@ game_height = 110
 paddle_width = 3
 paddle_height = 15
 paddle_speed = 5
-ball_radius = 2
+ball_radius = 2.5
 player_two_x = 150
 player_one_x = 7
 
@@ -45,13 +48,20 @@ class PongGame(GameEngine):
         self.player_two_has_player = False
         self.center = Center()
         super().__init__(25, hardware)
+        self.image_load()
         self.restart()
 
+    def image_load(self):
+        self.paddle_bitmap, self.paddle_palette = adafruit_imageload.load("/assets/pong/paddle.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        self.ball_bitmap, self.ball_palette = adafruit_imageload.load("/assets/pong/ball.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
+        self.background_bitmap, self.background_palette = adafruit_imageload.load("/assets/pong/pong-background.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
 
     def setup_screen(self):
         # Graphic Setup
         self.hardware.display.draw_rect(0, 0, 160, game_start_y - 2, fill=colors.BLACK) # Background
-        self.hardware.display.draw_rect(game_start_x, game_start_y, game_width, game_height, fill=0x3b2f2f) # Game Area
+        bg_sprite = displayio.TileGrid(self.background_bitmap, pixel_shader=self.background_palette, x=game_start_x, y=game_start_y)
+        self.hardware.display.add_element(bg_sprite)
+        #self.hardware.display.draw_rect(game_start_x, game_start_y, game_width, game_height, fill=0x1f0510) # Game Area
         self.hardware.display.draw_line(game_start_x, game_start_y - 1, game_width, game_start_y - 1, colors.WHITE) # Divider Line
         self.hardware.display.draw_text(5, 10, "P1:", 1, colors.WHITE) # Player 1 Score Label
         self.p1_score_display = self.hardware.display.draw_text(25, 10, str(self.player_one_score), 1, colors.WHITE) # Player 1 Score Value
@@ -75,7 +85,6 @@ class PongGame(GameEngine):
     async def process(self) -> int:
         if(self.hardware.menu_button.was_pressed()):
             return 0
-        dir = None
         if self.playing:
             analog = self.hardware.joystick.get_vertical()
             dead_zone = 100
@@ -102,63 +111,89 @@ class PongGame(GameEngine):
             if(self.blue_button.is_pressed()):
                 self.playing = True
                 self.restart()
+        
+        self.get_ai_direction(self.player_two)
         await super().update()
         # change direction of ball if it hits the top or bottom of the screen
         if(self.ball.collision_box.y <= game_start_y or self.ball.collision_box.y >= game_start_y + game_height - ball_radius * 2):
             self.ball.velocity.set_direction(360 - self.ball.velocity.direction_angle)
             self.ball.collision_box.y = max(min(self.ball.collision_box.y, game_start_y + game_height - ball_radius * 2), game_start_y)
             asyncio.create_task(self.hardware.speaker.play_note_async("C5", .03))
-        # change direction of ball if it hits the left or right of the screen
-        if(self.ball.collision_box.x <= game_start_x or self.ball.collision_box.x >= game_start_x + game_width - ball_radius * 2):
-            new_angle_deg = (180 - self.ball.velocity.direction_angle) % 360
-            self.ball.velocity.set_direction(new_angle_deg)
-            self.ball.collision_box.x = max(min(self.ball.collision_box.x, game_start_x + game_width - ball_radius * 2), game_start_x)
+
+        if(self.ball.check_collision(self.player_one)):
+            self.ball.collision_box.x = player_one_x + paddle_width
+            ball_center_y = self.ball.collision_box.y + ball_radius
+            paddle_center_y = self.player_one.collision_box.y + paddle_height / 2
+            y_diff = ball_center_y - paddle_center_y
+            angle_variance = uniform(-5, 5) # Random variance between -5 and 5
+            self.ball.velocity.set_direction((360 - (-y_diff / (paddle_height / 2) * 50) + angle_variance) % 360)
             asyncio.create_task(self.hardware.speaker.play_note_async("C4", .03))
         
-        self.get_ai_direction(self.player_two)
+        if(self.ball.check_collision(self.player_two)):
+            self.ball.collision_box.x = player_two_x - ball_radius * 2
+            ball_center_y = self.ball.collision_box.y + ball_radius
+            paddle_center_y = self.player_two.collision_box.y + paddle_height / 2
+            y_diff = ball_center_y - paddle_center_y
+            angle_variance = uniform(-5, 5) # Random variance between -5 and 5
+            self.ball.velocity.set_direction((180 - (y_diff / (paddle_height / 2) * 50) + angle_variance) % 360)
+            asyncio.create_task(self.hardware.speaker.play_note_async("C4", .03))
+            
 
-        # await self.ball.move()
-        # previous_ball_x = self.ball.x - self.ball.xspeed
-        # # Check for player 2 collision
-        # if(self.ball.xspeed > 0 
-        #    and self.ball.x + ball_radius * 2 >= player_two_x #current position is greater or equal to paddle x
-        #    and previous_ball_x + ball_radius * 2 <= player_two_x): #previous position is less than or equal to paddle x
-            
-        #     if(self.player_two.y <= self.ball.p2_intersection_y - ball_radius <= self.player_two.y + paddle_height
-        #        or self.player_two.y <= self.ball.p2_intersection_y + ball_radius <= self.player_two.y + paddle_height):
-        #         asyncio.create_task(self.hardware.speaker.play_note_async("C4", .03))
-        #         self.ball.x = player_two_x - ball_radius * 2
-        #         self.ball.collided_with_paddle(round(self.ball.p1_intersection_y))
-        # # Check for player 1 collision
-        # elif(self.ball.xspeed < 0
-        #      and self.ball.x <= player_one_x + paddle_width #currnet position is less than or equal to paddle x
-        #      and previous_ball_x >= player_one_x + paddle_width):#previous position is greater than or equal to paddle x
-            
-        #     if(self.player_one.y <= self.ball.p1_intersection_y - ball_radius <= self.player_one.y + paddle_height
-        #        or self.player_one.y <= self.ball.p1_intersection_y + ball_radius <= self.player_one.y + paddle_height):
-        #         asyncio.create_task(self.hardware.speaker.play_note_async("C4", .03))
-        #         self.ball.x = player_one_x + paddle_width
-        #         self.ball.collided_with_paddle(round(self.ball.p2_intersection_y))
-        # if(self.ball.x <= game_start_x - ball_radius * 2):
-        #     asyncio.create_task(self.hardware.speaker.play_song_async(score_notes, score_durations))
-        #     self.player_two_score += 1
-        #     self.p2_score_display.text = str(self.player_two_score)
-        #     self.ball.reset()
-        #     await asyncio.sleep(1)
-        # elif(self.ball.x >= game_start_x + game_width):
-        #     asyncio.create_task(self.hardware.speaker.play_song_async(score_notes, score_durations))
-        #     self.player_one_score += 1
-        #     self.p1_score_display.text = str(self.player_one_score)
-        #     self.ball.reset()
-        #     await asyncio.sleep(1)
-        # self.ball.redraw()
+        #prevent both paddles from going off screen
+        if(self.player_one.collision_box.y <= game_start_y):
+            self.player_one.collision_box.y = game_start_y
+        elif(self.player_one.collision_box.y >= game_start_y + game_height - paddle_height):
+            self.player_one.collision_box.y = game_start_y + game_height - paddle_height
+        if(self.player_two.collision_box.y <= game_start_y):
+            self.player_two.collision_box.y = game_start_y
+        elif(self.player_two.collision_box.y >= game_start_y + game_height - paddle_height):
+            self.player_two.collision_box.y = game_start_y + game_height - paddle_height
+        
+
+        if(self.ball.collision_box.x <= game_start_x - ball_radius * 2):
+            asyncio.create_task(self.hardware.speaker.play_song_async(score_notes, score_durations))
+            self.player_two_score += 1
+            self.p2_score_display.text = str(self.player_two_score)
+            self.ball.reset()
+            self.ball.velocity.set_direction(0 + uniform(-20, 20) % 360)
+            self.ball.velocity.set_speed(0)
+            self.speed_increase_timer = time.monotonic()
+        elif(self.ball.collision_box.x >= game_start_x + game_width):
+            asyncio.create_task(self.hardware.speaker.play_song_async(score_notes, score_durations))
+            self.player_one_score += 1
+            self.p1_score_display.text = str(self.player_one_score)
+            self.ball.reset()
+            self.ball.velocity.set_direction(180 + uniform(-20, 20))
+            self.ball.velocity.set_speed(0)
+            self.speed_increase_timer = time.monotonic()
+        
+        if(self.player_one_score >= 10 or self.player_two_score >= 10):
+            self.playing = False
+            self.restart()
+            await asyncio.sleep(1)
+        
+        if(time.monotonic() - self.speed_increase_timer > 2):
+            self.speed_increase_timer = time.monotonic()
+            if(self.ball.velocity.speed < 4):
+                self.ball.velocity.set_speed(4)
+            else:
+                self.ball.velocity.set_speed(self.ball.velocity.speed + .15)
+
         await self.draw()
-        # await asyncio.sleep(.05)
         return -1
     
     async def draw(self):
         await super().draw()
 
+    def handle_collision(self, player, player_x, direction_multiplier):
+        self.ball.collision_box.x = player_x + (paddle_width if direction_multiplier == 1 else -ball_radius * 2)
+        ball_center_y = self.ball.collision_box.y + ball_radius
+        paddle_center_y = player.collision_box.y + paddle_height / 2
+        y_diff = ball_center_y - paddle_center_y
+        angle_variance = uniform(-5, 5) # Random variance between -5 and 5
+        direction = (direction_multiplier * 180 - (y_diff / (paddle_height / 2) * 70) + angle_variance) % 360
+        self.ball.velocity.set_direction(direction)
+        asyncio.create_task(self.hardware.speaker.play_note_async("C4", .03))
 
     def get_ai_direction(self, player):
         target = None
@@ -188,6 +223,7 @@ class PongGame(GameEngine):
     def restart(self):
         self.player_one_score = 0
         self.player_two_score = 0
+        self.speed_increase_timer = time.monotonic()
         self.hardware.display.reset()
         self.setup_screen()
         if(self.playing):
@@ -196,25 +232,32 @@ class PongGame(GameEngine):
         else:
            self.blue_button.pulse()
            self.hardware.joystick.debounce_time = .5
+        player_one_sprite = displayio.TileGrid(self.paddle_bitmap, pixel_shader=self.paddle_palette, x=player_one_x, y=round(game_height / 2 + game_start_y - paddle_height / 2))
+        self.hardware.display.add_element(player_one_sprite)
         self.player_one = DynamicObject(player_one_x,
                                         round(game_height / 2 + game_start_y - paddle_height / 2),
                                         paddle_width,
                                         paddle_height,
-                                        self.hardware.display.draw_rect(player_one_x, round(game_height / 2 + game_start_y - paddle_height / 2),
-                                                                        paddle_width, paddle_height, colors.WHITE), 0, 90)
-        
+                                        player_one_sprite,
+                                          0, 90)
+        player_two_sprite = displayio.TileGrid(self.paddle_bitmap, pixel_shader=self.paddle_palette, x=player_two_x, y=round(game_height / 2 + game_start_y - paddle_height / 2))
+        self.hardware.display.add_element(player_two_sprite)
         self.player_two = DynamicObject(player_two_x,
                                         round(game_height / 2 + game_start_y - paddle_height / 2),
                                         paddle_width,
                                         paddle_height,
-                                        self.hardware.display.draw_rect(player_two_x, round(game_height / 2 + game_start_y - paddle_height / 2),
-                                                                        paddle_width, paddle_height, colors.WHITE), 0, 90)
+                                        player_two_sprite,
+                                            0, 90)
         #set acceleration
         self.player_one.velocity.set_acceleration(1, 5)
         self.player_two.velocity.set_acceleration(1, 5)
         # self.player_one = Paddle(self.hardware.display, 1)
         # self.player_two = Paddle(self.hardware.display, 2)
-        self.ball = DynamicObject((game_start_x + game_width)/2, (game_start_y + game_height)/2, ball_radius * 2, ball_radius * 2, self.hardware.display.draw_circle(20, 20, ball_radius, colors.WHITE), 4, 45)
+        ball_sprite = displayio.TileGrid(self.ball_bitmap, pixel_shader=self.ball_palette, x=round(game_start_x + game_width/2 - ball_radius), y=round(game_start_y + game_height/2 - ball_radius + 1))
+        self.hardware.display.add_element(ball_sprite)
+        self.ball = DynamicObject(game_start_x + game_width/2 - ball_radius, game_start_y + game_height/2 - ball_radius + 1, ball_radius * 2, ball_radius * 2,
+                                  ball_sprite,
+                                    0, 45)
         self.objects.append(self.ball)
         self.objects.append(self.player_one)
         self.objects.append(self.player_two)

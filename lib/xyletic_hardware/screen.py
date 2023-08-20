@@ -113,3 +113,9 @@ class Screen:
             self.__main_group.remove(element)
         else:
             group.remove(element)
+    
+    def add_element(self, element, group=None):
+        if(group is None):
+            self.__main_group.append(element)
+        else:
+            group.append(element)

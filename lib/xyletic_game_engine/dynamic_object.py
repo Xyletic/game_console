@@ -4,6 +4,8 @@ from xyletic_game_engine.game_object import GameObject
 class DynamicObject(GameObject):
     def __init__(self, x, y, width, height, sprite, speed=0, direction_angle=0):
         super().__init__(x, y, width, height, sprite)
+        self.start_speed = speed
+        self.start_direction_angle = direction_angle
         self.velocity = MotionVector(speed, direction_angle)
 
     def update(self, delta_time):
@@ -18,19 +20,6 @@ class DynamicObject(GameObject):
         # Check if object is None
         if other_object is None:
             return False
-        
-        # Calculate the bounding area based on inverted velocity and size
-        bounding_x = self.collision_box.x - min(0, self.velocity.x)
-        bounding_y = self.collision_box.y - min(0, self.velocity.y)
-        bounding_width = self.collision_box.width + abs(self.velocity.x)
-        bounding_height = self.collision_box.height + abs(self.velocity.y)
-
-        # Check if the other object is outside the bounding area
-        if (other_object.collision_box.x + other_object.collision_box.width < bounding_x or
-            other_object.collision_box.x > bounding_x + bounding_width or
-            other_object.collision_box.y + other_object.collision_box.height < bounding_y or
-            other_object.collision_box.y > bounding_y + bounding_height):
-            return False
 
         # Normal collision check (or other narrow phase checks if needed)
         return super().check_collision(other_object) or self.check_advanced_collision(other_object)
@@ -39,7 +28,8 @@ class DynamicObject(GameObject):
     def check_advanced_collision(self, other_object):
         # Determine the number of steps based on the greater velocity component
         steps = int(max(abs(self.velocity.x) / self.collision_box.width, abs(self.velocity.y) / self.collision_box.height))
-
+        if(steps <= 0):
+            return False
         # Incremental steps for x and y
         step_x = self.velocity.x / steps
         step_y = self.velocity.y / steps
@@ -49,7 +39,7 @@ class DynamicObject(GameObject):
         temp_position_y = self.collision_box.y
 
         # Check collision at each step
-        for step in range(steps + 1):
+        for _ in range(steps + 1):
             # Check collision at the temporary position
             if (temp_position_x < other_object.collision_box.x + other_object.collision_box.width and
                 temp_position_x + self.collision_box.width > other_object.collision_box.x and
@@ -69,3 +59,7 @@ class DynamicObject(GameObject):
         #super().draw()
         # Other draw logic
         pass
+
+    def reset(self):
+        super().reset()
+        self.velocity = MotionVector(self.start_speed, self.start_direction_angle)
