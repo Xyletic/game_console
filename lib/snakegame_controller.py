@@ -42,42 +42,29 @@ class SnakeGame:
         self.restart()
 
 
+    def load_images(self, paths, make_transparent=False):
+        bitmaps = []
+        palettes = []
+        for path in paths:
+            bitmap, palette = adafruit_imageload.load(path, bitmap=displayio.Bitmap, palette=displayio.Palette)
+            if(make_transparent):
+                palette.make_transparent(0)
+            bitmaps.append(bitmap)
+            palettes.append(palette)
+        return bitmaps, palettes
+
+
     def image_load(self):
-        #Snake Head
-        snake_head_bitmap_up, snake_head_palette_up = adafruit_imageload.load("/assets/snake/snake_head_up.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        snake_head_bitmap_left, snake_head_palette_left = adafruit_imageload.load("/assets/snake/snake_head_left.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        self.snake_head_bitmaps = [snake_head_bitmap_up, snake_head_bitmap_left]
-        self.snake_head_palettes = [snake_head_palette_up, snake_head_palette_left]
+        snake_head_paths = ["/assets/snake/snake_head_up.bmp", "/assets/snake/snake_head_left.bmp"]
+        self.snake_head_bitmaps, self.snake_head_palettes = self.load_images(snake_head_paths)
 
-        #Snake Body
-        snake_body_straight_bitmap_up, snake_body_straight_palette_up = adafruit_imageload.load("/assets/snake/snake_body_straight_up.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        snake_body_straight_bitmap_left, snake_body_straight_palette_left = adafruit_imageload.load("/assets/snake/snake_body_straight_left.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        snake_body_corner_bitmap, snake_body_corner_palette = adafruit_imageload.load("/assets/snake/snake_body_corner.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        snake_body_end_bitmap_up, snake_body_end_palette_up = adafruit_imageload.load("/assets/snake/snake_body_tail_up.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        snake_body_end_bitmap_left, snake_body_end_palette_left = adafruit_imageload.load("/assets/snake/snake_body_tail_left.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        self.snake_body_bitmaps = [snake_body_straight_bitmap_up, snake_body_straight_bitmap_left, snake_body_corner_bitmap, snake_body_end_bitmap_up, snake_body_end_bitmap_left]
-        self.snake_body_palettes = [snake_body_straight_palette_up, snake_body_straight_palette_left, snake_body_corner_palette, snake_body_end_palette_up, snake_body_end_palette_left]
+        snake_body_paths = ["/assets/snake/snake_body_straight_up.bmp", "/assets/snake/snake_body_straight_left.bmp", "/assets/snake/snake_body_corner.bmp", "/assets/snake/snake_body_tail_up.bmp", "/assets/snake/snake_body_tail_left.bmp"]
+        self.snake_body_bitmaps, self.snake_body_palettes = self.load_images(snake_body_paths)
 
-        #Apple
         self.apple_bitmap, self.apple_palette = adafruit_imageload.load("/assets/snake/apple.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
 
-        #Foliage
-        foliage_1_bitmap, foliage_1_palette = adafruit_imageload.load("/assets/snake/foliage_1.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        foliage_2_bitmap, foliage_2_palette = adafruit_imageload.load("/assets/snake/foliage_2.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        foliage_3_bitmap, foliage_3_palette = adafruit_imageload.load("/assets/snake/foliage_3.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        foliage_4_bitmap, foliage_4_palette = adafruit_imageload.load("/assets/snake/foliage_4.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        foliage_5_bitmap, foliage_5_palette = adafruit_imageload.load("/assets/snake/foliage_5.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        foliage_6_bitmap, foliage_6_palette = adafruit_imageload.load("/assets/snake/foliage_6.bmp", bitmap=displayio.Bitmap, palette=displayio.Palette)
-        foliage_1_palette.make_transparent(0)
-        foliage_2_palette.make_transparent(0)
-        foliage_3_palette.make_transparent(0)
-        foliage_4_palette.make_transparent(0)
-        foliage_5_palette.make_transparent(0)
-        foliage_6_palette.make_transparent(0)
-        self.foliage_bitmaps = [foliage_1_bitmap, foliage_2_bitmap, foliage_3_bitmap, foliage_4_bitmap, foliage_5_bitmap, foliage_6_bitmap]
-        self.foliage_palettes = [foliage_1_palette, foliage_2_palette, foliage_3_palette, foliage_4_palette, foliage_5_palette, foliage_6_palette]
-
-        
+        foliage_paths = [f"/assets/snake/foliage_{i}.bmp" for i in range(1, 7)]
+        self.foliage_bitmaps, self.foliage_palettes = self.load_images(foliage_paths, make_transparent=True)
     
     def setup_screen(self):
         self.group = self.hardware.display.create_group()
