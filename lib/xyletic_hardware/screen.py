@@ -109,6 +109,8 @@ class Screen:
         self.display.refresh()
 
     def remove_element(self, element, group=None):
+        if(element is None):
+            return
         if(group is None):
             self.__main_group.remove(element)
         else:

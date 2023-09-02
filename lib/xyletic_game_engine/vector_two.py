@@ -16,6 +16,15 @@ class Vector2:
 
     def __mul__(self, scalar):
         return Vector2(self.x * scalar, self.y * scalar)
+    
+    def __hash__(self):
+        return hash((round(self.x), round(self.y)))
+    
+    def __eq__(self, other):
+        return round(self.x) == round(other.x) and round(self.y) == round(other.y)
+    
+    def rounded(self):
+        return Vector2(round(self.x), round(self.y))
 
     def dot(self, other):
         return self.x * other.x + self.y * other.y
@@ -33,5 +42,6 @@ class Vector2:
         return (self - other).magnitude()
     
     def angle_to(self, other):
-        return math.atan2(other.y - self.y, other.x - self.x)
+        angle_in_radians = math.atan2(other.y - self.y, other.x - self.x)
+        return math.degrees(angle_in_radians)
     

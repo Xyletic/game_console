@@ -20,7 +20,7 @@ game_start_y = 18
 game_width = 160
 game_height = 110
 paddle_width = 3
-paddle_height = 15
+paddle_height = 18
 paddle_speed = 5
 ball_radius = 2.5
 player_two_x = 150
@@ -49,6 +49,37 @@ class PongGame(GameEngine):
         self.center = Center()
         super().__init__(25, hardware)
         self.image_load()
+        self.hardware.display.reset()
+        self.setup_screen()
+        player_one_sprite = displayio.TileGrid(self.paddle_bitmap, pixel_shader=self.paddle_palette, x=player_one_x, y=round(game_height / 2 + game_start_y - paddle_height / 2))
+        self.hardware.display.add_element(player_one_sprite)
+        self.player_one = DynamicObject(player_one_x,
+                                        round(game_height / 2 + game_start_y - paddle_height / 2),
+                                        paddle_width,
+                                        paddle_height,
+                                        player_one_sprite,
+                                          0, 90)
+        player_two_sprite = displayio.TileGrid(self.paddle_bitmap, pixel_shader=self.paddle_palette, x=player_two_x, y=round(game_height / 2 + game_start_y - paddle_height / 2))
+        self.hardware.display.add_element(player_two_sprite)
+        self.player_two = DynamicObject(player_two_x,
+                                        round(game_height / 2 + game_start_y - paddle_height / 2),
+                                        paddle_width,
+                                        paddle_height,
+                                        player_two_sprite,
+                                            0, 90)
+        #set acceleration
+        self.player_one.velocity.set_acceleration(1, 5)
+        self.player_two.velocity.set_acceleration(1, 5)
+        # self.player_one = Paddle(self.hardware.display, 1)
+        # self.player_two = Paddle(self.hardware.display, 2)
+        ball_sprite = displayio.TileGrid(self.ball_bitmap, pixel_shader=self.ball_palette, x=round(game_start_x + game_width/2 - ball_radius), y=round(game_start_y + game_height/2 - ball_radius + 1))
+        self.hardware.display.add_element(ball_sprite)
+        self.ball = DynamicObject(game_start_x + game_width/2 - ball_radius, game_start_y + game_height/2 - ball_radius + 1, ball_radius * 2, ball_radius * 2,
+                                  ball_sprite,
+                                    0, 0 + uniform(-20, 20) % 360)
+        self.objects.append(self.ball)
+        self.objects.append(self.player_one)
+        self.objects.append(self.player_two)
         self.restart()
 
     def image_load(self):
@@ -61,16 +92,12 @@ class PongGame(GameEngine):
         self.hardware.display.draw_rect(0, 0, 160, game_start_y - 2, fill=colors.BLACK) # Background
         bg_sprite = displayio.TileGrid(self.background_bitmap, pixel_shader=self.background_palette, x=game_start_x, y=game_start_y)
         self.hardware.display.add_element(bg_sprite)
-        #self.hardware.display.draw_rect(game_start_x, game_start_y, game_width, game_height, fill=0x1f0510) # Game Area
-        self.hardware.display.draw_line(game_start_x, game_start_y - 1, game_width, game_start_y - 1, colors.WHITE) # Divider Line
-        self.hardware.display.draw_text(5, 10, "P1:", 1, colors.WHITE) # Player 1 Score Label
-        self.p1_score_display = self.hardware.display.draw_text(25, 10, str(self.player_one_score), 1, colors.WHITE) # Player 1 Score Value
-        self.hardware.display.draw_text(50, 10, "P2:", 1, colors.WHITE) # Player 2 Score Label
-        self.p2_score_display = self.hardware.display.draw_text(70, 10, str(self.player_two_score), 1, colors.WHITE) # Player 2 Score Value
-        if(not self.playing):
-            self.hardware.display.draw_text(5, 115, "Press", 1, colors.WHITE) # Score Label
-            self.hardware.display.draw_text(41, 115, "blue", 1, colors.LIGHT_BLUE) # Score Label
-            self.hardware.display.draw_text(70, 115, "to play!", 1, colors.WHITE) # Score Label
+        self.p1_score_display = self.hardware.display.draw_text(64, 10, str(self.player_one_score), 1, 0xd53c6a) # Player 1 Score Value
+        self.p2_score_display = self.hardware.display.draw_text(90, 10, str(self.player_two_score), 1, 0xd53c6a) # Player 2 Score Value
+        # if(not self.playing):
+        #     self.hardware.display.draw_text(5, 115, "Press", 1, colors.WHITE) # Score Label
+        #     self.hardware.display.draw_text(41, 115, "blue", 1, colors.LIGHT_BLUE) # Score Label
+        #     self.hardware.display.draw_text(70, 115, "to play!", 1, colors.WHITE) # Score Label
 
 
     def get_hardware_input(self) -> int:
@@ -178,6 +205,15 @@ class PongGame(GameEngine):
                 self.ball.velocity.set_speed(4)
             else:
                 self.ball.velocity.set_speed(self.ball.velocity.speed + .15)
+        
+        #check if the ball direction is too close to vertical directions and then adjust it
+        angle_dif = self.ball.velocity.direction_angle - 270
+        if((angle_dif < 10 and angle_dif > -10) or (angle_dif > -190 and angle_dif < -170)):
+            if(angle_dif < 0 or (angle_dif >= -180 and angle_dif < -170)):
+                self.ball.velocity.set_direction(self.ball.velocity.direction_angle - 10)
+            else:
+                self.ball.velocity.set_direction(self.ball.velocity.direction_angle + 10)
+
 
         await self.draw()
         return -1
@@ -223,42 +259,25 @@ class PongGame(GameEngine):
     def restart(self):
         self.player_one_score = 0
         self.player_two_score = 0
+        self.p1_score_display.text = str(self.player_one_score)
+        self.p2_score_display.text = str(self.player_two_score)
+        self.player_one.velocity.set_speed(0)
+        self.player_two.velocity.set_speed(0)
+        self.ball.reset()
+        self.ball.velocity.set_direction(0 + uniform(-20, 20) % 360)
+        self.ball.velocity.set_speed(0)
+        #reset player y positions
+        self.player_one.collision_box.y = round(game_height / 2 + game_start_y - paddle_height / 2)
+        self.player_two.collision_box.y = round(game_height / 2 + game_start_y - paddle_height / 2)
         self.speed_increase_timer = time.monotonic()
-        self.hardware.display.reset()
-        self.setup_screen()
+        
         if(self.playing):
            self.blue_button.LED_off()
            self.hardware.joystick.debounce_time = .01
+           self.player_two.velocity.set_acceleration(1, 4)
+           self.player_one.velocity.set_acceleration(1, 6)
         else:
            self.blue_button.pulse()
            self.hardware.joystick.debounce_time = .5
-        player_one_sprite = displayio.TileGrid(self.paddle_bitmap, pixel_shader=self.paddle_palette, x=player_one_x, y=round(game_height / 2 + game_start_y - paddle_height / 2))
-        self.hardware.display.add_element(player_one_sprite)
-        self.player_one = DynamicObject(player_one_x,
-                                        round(game_height / 2 + game_start_y - paddle_height / 2),
-                                        paddle_width,
-                                        paddle_height,
-                                        player_one_sprite,
-                                          0, 90)
-        player_two_sprite = displayio.TileGrid(self.paddle_bitmap, pixel_shader=self.paddle_palette, x=player_two_x, y=round(game_height / 2 + game_start_y - paddle_height / 2))
-        self.hardware.display.add_element(player_two_sprite)
-        self.player_two = DynamicObject(player_two_x,
-                                        round(game_height / 2 + game_start_y - paddle_height / 2),
-                                        paddle_width,
-                                        paddle_height,
-                                        player_two_sprite,
-                                            0, 90)
-        #set acceleration
-        self.player_one.velocity.set_acceleration(1, 5)
-        self.player_two.velocity.set_acceleration(1, 5)
-        # self.player_one = Paddle(self.hardware.display, 1)
-        # self.player_two = Paddle(self.hardware.display, 2)
-        ball_sprite = displayio.TileGrid(self.ball_bitmap, pixel_shader=self.ball_palette, x=round(game_start_x + game_width/2 - ball_radius), y=round(game_start_y + game_height/2 - ball_radius + 1))
-        self.hardware.display.add_element(ball_sprite)
-        self.ball = DynamicObject(game_start_x + game_width/2 - ball_radius, game_start_y + game_height/2 - ball_radius + 1, ball_radius * 2, ball_radius * 2,
-                                  ball_sprite,
-                                    0, 45)
-        self.objects.append(self.ball)
-        self.objects.append(self.player_one)
-        self.objects.append(self.player_two)
-        pass
+           self.player_two.velocity.set_acceleration(1, 5)
+           self.player_one.velocity.set_acceleration(1, 5)

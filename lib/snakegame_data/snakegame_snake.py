@@ -9,18 +9,30 @@ import displayio
 
 class Snake:
     def __init__(self, screen: Screen, controller: game.SnakeGame, group):
-        self.x = game.grid_start_x + game.grid_size * 2
-        self.y = game.grid_start_y + int(game.grid_height / 2)
-        self.direction = 0
-        self.tails = []
-        self.max_length = 100
         self.group = group
-        self.sprite = displayio.TileGrid(controller.snake_head_bitmaps[1], pixel_shader=controller.snake_head_palettes[1], x=self.x, y=self.y)
+        self.tail_group = None
+        self.controller = controller
+        self.screen = screen
+        self.max_length = 100
+        self.sprite = None
+        self.last_direction = 0
+        self.reset()
+    
+    def reset(self):
+        self.x : int = game.grid_start_x + game.grid_size * 2
+        self.y : int = game.grid_start_y + int(game.grid_height / 2)
+        self.direction = 0
+        if self.sprite is not None:
+            self.group.remove(self.sprite)
+        self.sprite = displayio.TileGrid(self.controller.snake_head_bitmaps[1], pixel_shader=self.controller.snake_head_palettes[1], x=self.x, y=self.y)
         self.sprite.flip_x = True
         self.group.append(self.sprite)
-        self.screen = screen
-        self.controller = controller
-        self.last_direction = 0
+        if self.tail_group is not None:
+            self.group.remove(self.tail_group)
+        self.tail_group = displayio.Group()
+        self.group.append(self.tail_group)
+        self.tails = []
+        
 
     def move_snake(self):
         if(len(self.tails) > 0):
@@ -69,18 +81,20 @@ class Snake:
             self.x = (game.grid_start_x + game.grid_width) - game.grid_size
         if(self.y < game.grid_start_y):
             self.y = (game.grid_start_y + game.grid_height) - game.grid_size
-        self.sprite.x = self.x
-        self.sprite.y = self.y
+        self.sprite.x = int(self.x)
+        self.sprite.y = int(self.y)
         self.last_direction = self.direction
         
     def apple_eaten(self):
         if(len(self.tails) < self.max_length):
             if(len(self.tails) > 0):
-                self.tails.append(SnakeTail(self.tails[-1].sprite.x, self.tails[-1].sprite.y, self.tails[-1].dir, self.controller, self.group))
+                self.tails.append(SnakeTail(self.tails[-1].sprite.x, self.tails[-1].sprite.y, self.tails[-1].dir, self.controller, self.tail_group))
             else:
-                self.tails.append(SnakeTail(self.x, self.y, self.direction, self.controller, self.group))
+                self.tails.append(SnakeTail(self.x, self.y, self.direction, self.controller, self.tail_group))
 
     def player_direction(self, dir):
+        # print out the direction and dir
+        #print("Direction: " + str(self.direction) + " Dir: " + str(dir))
         if(dir == 180 and self.direction is not 0):
             self.direction = 180
         elif(dir == 0 and self.direction is not 180):
@@ -109,13 +123,22 @@ class Snake:
 
         target_direction = self.direction
 
-        if(x_dif > game.grid_width / 2 or (x_dif >= game.grid_width / -2 and x_dif < 0)):
+        # if(x_dif > game.grid_width / 2 or (x_dif >= game.grid_width / -2 and x_dif < 0)):
+        #     target_direction = 0
+        # elif((x_dif > 0 and x_dif <= game.grid_width / 2) or x_dif < game.grid_width / -2):
+        #     target_direction = 180
+        # elif(y_dif > game.grid_height / 2 or (y_dif >= game.grid_height / -2 and y_dif < 0)):
+        #     target_direction = 90
+        # elif((y_dif > 0 and y_dif <= game.grid_height / 2) or y_dif < game.grid_height / -2):
+        #     target_direction = 270
+
+        if(x_dif < 0):
             target_direction = 0
-        elif((x_dif > 0 and x_dif <= game.grid_width / 2) or x_dif < game.grid_width / -2):
+        elif(x_dif > 0):
             target_direction = 180
-        elif(y_dif > game.grid_height / 2 or (y_dif >= game.grid_height / -2 and y_dif < 0)):
+        elif(y_dif < 0):
             target_direction = 90
-        elif((y_dif > 0 and y_dif <= game.grid_height / 2) or y_dif < game.grid_height / -2):
+        elif(y_dif > 0):
             target_direction = 270
 
         if self.direction == target_direction and target_direction in safe_directions:
