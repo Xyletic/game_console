@@ -79,5 +79,7 @@ Screen size. Even though the Pico might not have had the memory to support a lar
 
 A better frame/shell. The board I printed was intended to be a prototype holder. It's not the most comfortable to use, though.
 
+I tried developing a screenshot system and ultimately gave up. My hope was to be able to get clearer pictures of the games since it was very difficult using a phone camera.
+
 # Conclusion
-Hopefully sharing this project sparks some ideas in your head and maybe new more awesome things are created from it. I really enjoyed this project and I've considered multiple times revisiting it now that the Raspberry Pi Pico 2 is out with double the memory.
+Hopefully sharing this project sparks some ideas in your head and maybe new more awesome things are created from it. I really enjoyed this project and I've considered multiple times revisiting it now that the Raspberry Pi Pico 2 is out with double the memory, but for now, I hope you enjoyed the read!
