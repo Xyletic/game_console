@@ -13,6 +13,9 @@ What I found during this initial phase was that there would be a lot of complexi
 
 I had also tested with an ESP32 as well as Arduino and while I absolutely love the ESP32 and Arduino microcontrollers - the library support for the screen I picked within the C language was not as robust. Not to mention, I had almost no experience with C and Python felt very familiar and comfortable coming from a C# background.
 
+### Primary Goal
+Challenge myself to create something from scratch. No tutorials. No guidelines. Go in blind and see what you can make.
+
 ### Pictures
 ![image](https://github.com/user-attachments/assets/8e1ac774-736e-40e8-a38d-9bb144f415ec)
 
